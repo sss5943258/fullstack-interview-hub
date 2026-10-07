@@ -3,6 +3,7 @@ import { angularQuestions } from './angularQuestions';
 import { dotnetQuestions } from './dotnetQuestions';
 import { sqlQuestions } from './sqlQuestions';
 import { devopsQuestions } from './devopsQuestions';
+import { topicGuides, getGuidesByCategory, searchGuides } from './topicGuides';
 
 export const ALL_CATEGORIES = [
   { id: 'All', name: '全部領域', icon: 'Sparkles', color: 'from-cyan-500 to-blue-600' },
@@ -84,4 +85,10 @@ export const saveStoredStats = (stats) => {
   }
 };
 
-export { STORAGE_KEYS };
+export { 
+  STORAGE_KEYS,
+  topicGuides,
+  getGuidesByCategory,
+  searchGuides
+};
+

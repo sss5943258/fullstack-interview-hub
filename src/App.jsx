@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import QuestionList from './components/QuestionList';
 import FlashcardMode from './components/FlashcardMode';
 import MockQuizMode from './components/MockQuizMode';
+import TopicGuidesMode from './components/TopicGuidesMode';
 import StatsModal from './components/StatsModal';
 import { 
   allQuestions, 
@@ -11,8 +12,18 @@ import {
   STORAGE_KEYS 
 } from './data';
 
+/**
+ * App - 應用程式根元件 (Root Component)
+ * 
+ * 【React 小白學習筆記】：
+ * 1. 單向資料流 (One-Way Data Flow)：App 作為頂層元件，持有全域狀態（如 activeMode, masteredSet），
+ *    並透過 props 將資料向下傳遞給子元件（Navbar, QuestionList, TopicGuidesMode 等）。
+ * 2. 惰性初始化 (Lazy Initial State)：`useState(() => loadStoredSet(...))` 傳入函式，
+ *    只會在元件「初次載入 (Initial Mount)」時執行一次，避免每次 Re-render 都重複讀取 localStorage，大幅提升效能！
+ * 3. 副作用處理 (useEffect)：監聽 masteredSet 與 bookmarkSet 的變動，自動將最新資料同步持久化至瀏覽器 localStorage。
+ */
 export default function App() {
-  // Practice Mode: 'bank' | 'flashcard' | 'quiz'
+  // Practice Mode: 'bank' (題庫) | 'guides' (專題精講) | 'flashcard' (翻牌) | 'quiz' (測驗)
   const [activeMode, setActiveMode] = useState('bank');
   
   // LocalStorage state sets
@@ -22,16 +33,26 @@ export default function App() {
   // Stats Modal open state
   const [isStatsOpen, setIsStatsOpen] = useState(false);
 
-  // Persistence Effects
+  // Persistence Effects: 當 masteredSet 改變時，寫入 localStorage
   useEffect(() => {
     saveStoredSet(STORAGE_KEYS.MASTERED, masteredSet);
   }, [masteredSet]);
 
+  // Persistence Effects: 當 bookmarkSet 改變時，寫入 localStorage
   useEffect(() => {
     saveStoredSet(STORAGE_KEYS.BOOKMARKS, bookmarkSet);
   }, [bookmarkSet]);
 
-  // Toggle Handlers
+  /**
+   * toggleMastered - 切換題目是否已掌握 (Mastered) 的狀態
+   * 
+   * 【React 小白學習筆記 - 函數式更新 (Functional Update)】：
+   * 當新狀態依賴於前一個狀態時，使用 `setMasteredSet(prev => ...)` 形式。
+   * 注意不可變性 (Immutability)：我們必須 `new Set(prev)` 複製一份新物件再修改，
+   * 絕不能直接在舊的 prev 上進行 mutation，這樣 React 才能正確偵測到依賴變化並觸發畫面更新！
+   * 
+   * @param {string} id - 題目 ID (例如 'react-01')
+   */
   const toggleMastered = (id) => {
     setMasteredSet(prev => {
       const next = new Set(prev);
@@ -44,6 +65,15 @@ export default function App() {
     });
   };
 
+  /**
+   * toggleBookmark - 切換題目是否已收藏 (Bookmark) 的狀態
+   * 
+   * 【React 小白學習筆記】：
+   * 與 toggleMastered 相同，遵循「不可變狀態原則 (Immutable State Principle)」，
+   * 建立全新 Set 實例以確保狀態更新能夠安全觸發所有依賴此 Set 的子元件重繪。
+   * 
+   * @param {string} id - 題目 ID (例如 'react-18')
+   */
   const toggleBookmark = (id) => {
     setBookmarkSet(prev => {
       const next = new Set(prev);
@@ -56,7 +86,13 @@ export default function App() {
     });
   };
 
-  // Reset all stored data
+  /**
+   * handleResetAll - 清空所有本機儲存資料與統計數據
+   * 
+   * 【React 小白學習筆記】：
+   * 同步重設多個 State，在 React 18 / 19 中具備「自動批次處理 (Automatic Batching)」，
+   * 連續呼叫兩次 setState 只會引發一次 Re-render，不會有閃爍問題。
+   */
   const handleResetAll = () => {
     setMasteredSet(new Set());
     setBookmarkSet(new Set());
@@ -98,6 +134,12 @@ export default function App() {
               bookmarkSet={bookmarkSet}
               toggleMastered={toggleMastered}
               toggleBookmark={toggleBookmark}
+            />
+          )}
+
+          {activeMode === 'guides' && (
+            <TopicGuidesMode
+              onSwitchToBank={() => setActiveMode('bank')}
             />
           )}
 

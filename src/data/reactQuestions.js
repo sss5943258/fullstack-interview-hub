@@ -750,5 +750,234 @@ function Modal({ children, isOpen }) {
     ],
     correctIndex: 1,
     quizExplanation: "createPortal 允許將 React 元件輸出到真實 DOM 的任意位置，突破父元件 CSS 容器限制，且保留 React 事件冒泡機制。"
+  },
+  {
+    id: "react-18",
+    category: "React",
+    difficulty: "Senior",
+    title: "React 全域狀態管理選型：Context API vs Zustand vs Redux 的本質差異與「一人感冒全家吃藥」痛點為何？",
+    tags: ["State Management", "Zustand", "Context API", "Performance", "Selector"],
+    summary: "Context API 缺乏 Selector 精準訂閱機制，Context 值變更會觸發所有 Consumer 無條件 Re-render；Zustand 採外部 Store 訂閱機制，支援零 Provider、精準 Selector 訂閱與非 React 環境存取。",
+    answer: `📌 **核心觀念**
+在 React 生態中，**Context API** 並非真正的狀態管理庫，本質只是**依賴注入 (Dependency Injection)** 工具。當專案需要頻繁更新狀態、或避免無謂渲染時，專門的狀態庫（如 **Zustand**）是更優秀的架構選擇。
+
+🔍 **技術細節剖析**
+1. **Context API 的核心痛點 ——「一人感冒，全家吃藥」**：
+   - 當 Context 的 \`value\`（例如物件 \`{ user, theme, unreadCount }\`）改變時，**所有使用 \`useContext(AppContext)\` 的子元件一律無條件全部強制重新渲染**。
+   - 即使某元件只用到 \`theme\`，只要 \`unreadCount\` 稍微跳動，該元件也會被迫重新繪製。
+   - 解法必須把資料切成無數個獨立的 Context，進而引發「Provider 俄羅斯套娃 (Provider Hell)」。
+2. **無法在純 JavaScript 檔案中存取**：
+   - \`useContext\` 是 React Hook，**嚴格限制只能在 JSX 元件函式內部呼叫**。
+   - 若在 Axios / Fetch 網路請求攔截器、WebSocket 監聽器或共用邏輯模組中需要讀取 Token，Context 完全無能為力。
+3. **Zustand 的架構優勢**：
+   - **零 Provider**：基於模組級別的外部狀態單例，完全不需要在根節點外層層包裹 Provider。
+   - **精準 Selector 訂閱**：透過 \`useStore(state => state.theme)\`，底層基於 \`useSyncExternalStore\`，只有被訂閱的欄位改變時才會觸發元件 Re-render。
+   - **Vanilla JS 任意存取**：提供 \`useStore.getState()\` 與 \`useStore.setState()\`，能在任何非 React 檔案中自由讀寫狀態。
+
+💻 **對比範例程式碼**
+\`\`\`javascript
+// 🌟 Zustand：支援在純 JS 網路攔截器中直接讀取狀態
+import { useAuthStore } from '../stores/authStore';
+
+export function getAuthHeaders() {
+  // 不需要 Hook，直接從外部 Store 獲取最新 Token
+  const token = useAuthStore.getState().accessToken;
+  return {
+    Authorization: \`Bearer \${token}\`,
+  };
+}
+\`\`\`
+
+💡 **面試加分點**
+- 建議面試時提出狀態選型原則：低頻全域變動（i18n、Dark Mode）可用 Context；高頻變動、需精準訂閱或需跨非 React 模組存取的業務狀態，果斷選用 Zustand。`,
+    options: [
+      "Context API 內建精準 Selector 機制，只有使用到的屬性更新才會觸發元件 Re-render",
+      "Context API 的 Hook 可以在任何普通 JS 檔案（例如 Axios 攔截器）中直接呼叫",
+      "Context API 值變動會導致所有 Consumer 元件強制 Re-render，而 Zustand 支援精準 Selector 且可在非 React 環境中存取",
+      "Zustand 必須在 App 根節點包裹多層 Provider 才能運作"
+    ],
+    correctIndex: 2,
+    quizExplanation: "Context API 缺乏精準訂閱機制，值變更時所有 Consumer 均會重新渲染；Zustand 採外部 Store 訂閱機制，支援零 Provider、精準 Selector 訂閱以及在非 React 環境（如 API 攔截器）直接存取。"
+  },
+  {
+    id: "react-19",
+    category: "React",
+    difficulty: "Mid",
+    title: "useReducer 的核心運作機制為何？為什麼 dispatch 函式不需要放進依賴陣列？如何防禦性合併狀態？",
+    tags: ["useReducer", "Hooks", "Immutability", "Defensive Coding"],
+    summary: "useReducer 將狀態變更邏輯集中於純函式 Reducer。dispatch 參照在元件生命週期中絕對穩定，無須放入依賴陣列；處理 API 回傳物件時應使用防禦性解構合併。",
+    answer: `📌 **核心觀念**
+\`useReducer\` 是 React 用來管理**複雜或多欄位關聯狀態**的原生 Hook。它將「狀態如何變更（Reducer）」與「何時觸發變更（Dispatch Action）」徹底解耦。
+
+🔍 **技術細節剖析**
+1. **dispatch 為什麼不用放進依賴陣列？**：
+   - React 官方在 Fiber 架構內部保證：\`dispatch\` 函式的**記憶體位址在元件的整個生命週期內永遠不會改變 (Identity Stability)**。
+   - 因此在 \`useEffect\` 或 \`useCallback\` 的依賴陣列中，省略 \`dispatch\` 既安全且完全不會引發 stale closure。
+2. **Reducer 必須是純函式 (Pure Function)**：
+   - 相同的 \`(state, action)\` 輸入必須永遠產出相同的 \`newState\`，嚴禁在 Reducer 內部執行副作用（如呼叫 API 或修改全域變數）。
+3. **防禦性狀態合併 (Defensive State Merging)**：
+   - 在接收 API 資料時，為防止後端漏傳欄位或沖刷掉前端暫態，應採用防禦性展開：
+   \`{ ...state, ...action.payload }\`。
+
+💻 **實作範例**
+\`\`\`javascript
+/**
+ * tripReducer - 行程狀態管理純函式
+ * @param {Object} state - 當前狀態
+ * @param {Object} action - 派發動作 { type, payload }
+ */
+function tripReducer(state, action) {
+  switch (action.type) {
+    case 'FETCH_SUCCESS':
+      // 🌟 防禦性合併：保留舊有前端暫態（如過濾條件），僅覆蓋 API 回傳的新資料
+      return {
+        ...state,
+        ...action.payload,
+        isLoading: false,
+        error: null,
+      };
+    case 'FETCH_ERROR':
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload,
+      };
+    default:
+      return state;
+  }
+}
+\`\`\`
+
+💡 **面試加分點**
+- 提到當下一個 State 依賴前一個 State 的多個欄位時（如切換開關同時重置分頁與計數器），\`useReducer\` 比多個散落的 \`useState\` 更有原子性保證與可測試性。`,
+    options: [
+      "dispatch 函式每次元件重新渲染時都會生成新實例，因此必須放進 useEffect 依賴陣列",
+      "React Fiber 保證 dispatch 參照在生命週期中絕對穩定，且 Reducer 必須是純函式進行不可變更新",
+      "Reducer 函式內部可以直接發送非同步 fetch 請求更新狀態",
+      "useReducer 只能用於字串與數字等純數值狀態，無法管理物件與陣列"
+    ],
+    correctIndex: 1,
+    quizExplanation: "React 官方保證 dispatch 的記憶體參照在元件生命週期中永遠固定不變，因此無須放入依賴陣列；且 Reducer 必須是純函式，狀態更新應保持不可變性。"
+  },
+  {
+    id: "react-20",
+    category: "React",
+    difficulty: "Mid",
+    title: "useRef 底層資料結構是什麼？為什麼修改 .current 不會觸發 Re-render？什麼是「幕後狀態反模式」？",
+    tags: ["useRef", "Hooks", "Memory", "Anti-Pattern", "Performance"],
+    summary: "useRef 回傳純物件 { current: val }，透過物件傳址特性跨渲染保留參考。修改屬性不觸發 React 調度渲染；誤將後台邏輯變數放入 useState 會導致不必要的效能損耗。",
+    answer: `📌 **核心觀念**
+\`useRef\` 在記憶體中本質就是一個普通的 JavaScript 單一屬性物件：**\`{ current: initialValue }\`**。它的存在是為了解決 JavaScript「原始型別傳值 (Pass by Value) 無法跨執行保持指標」的先天限制。
+
+🔍 **技術細節剖析**
+1. **為什麼修改 .current 不會觸發重新渲染？**：
+   - 當呼叫 \`useState\` 的 \`setState\` 時，React 會調用調度器 (Scheduler) 並標記組件 Fiber 為 Dirty，安排一次新的 Re-render 流程。
+   - 而修改 \`ref.current = true\` **只是修改一個普通 JavaScript 物件的屬性**，完全沒有通知 React Scheduler，因此不會引發任何 Re-render。
+2. **物件傳址 (Pass by Reference) 的核心價值**：
+   - React 在底層為元件實例分配一個固定的物件指標。元件函式即使重複執行上百次，React 每次回傳的 \`useRef\` 物件記憶體位址永遠是同一個。
+3. **何時該用 useRef？「幕後狀態反模式 (State Anti-Pattern)」**：
+   - **反模式**：把不需要呈現在畫面上的變數（例如：並發請求防重複點擊旗標 \`isSubmitting\`、計時器 Timer ID、WebSocket 實例）放進 \`useState\`。
+   - **代價**：每修改一次狀態就觸發一次無謂的 DOM 比對與 Virtual DOM 重算，造成頁面掉幀。
+   - **正確做法**：畫面用不到的幕後邏輯變數，一律使用 \`useRef\` 存取！
+
+💻 **實作範例**
+\`\`\`javascript
+import React, { useRef } from 'react';
+
+/**
+ * SubmitButton - 示範使用 useRef 避免重複提交
+ * 不需要為請求鎖觸發 Re-render，保證極致效能
+ */
+export default function SubmitButton({ onSubmit }) {
+  // 🌟 幕後請求鎖：使用 useRef 保存物件指標，修改時不造成畫面重繪
+  const isSubmittingRef = useRef(false);
+
+  const handleClick = async () => {
+    // 檢查併發鎖，若正在提交中則直接攔截
+    if (isSubmittingRef.current) return;
+
+    try {
+      isSubmittingRef.current = true;
+      await onSubmit();
+    } finally {
+      // 無論成功失敗，解除請求鎖
+      isSubmittingRef.current = false;
+    }
+  };
+
+  return (
+    <button onClick={handleClick} className="px-4 py-2 bg-cyan-600 text-white rounded">
+      送出訂單
+    </button>
+  );
+}
+\`\`\`
+
+💡 **面試加分點**
+- 提醒：嚴禁在元件的 Render 階段（即 Return 之前的同步邏輯）讀取或修改 \`ref.current\`，因為在 Concurrent 模式下 Render 可能被中斷或執行多次，容易引發不可預期的競態問題。`,
+    options: [
+      "useRef 底層會監聽屬性賦值並自動排程觸發組件 Re-render",
+      "useRef 底層本質是純物件 { current: val }，修改屬性不觸發 React 調度，適合保存無需反映在 UI 上的幕後邏輯資料",
+      "所有需要跨渲染保存的變數都應該放進 useState，即使畫面根本不需要顯示它",
+      "useRef 每次重新渲染時都會被垃圾回收並重新建立新的物件實體"
+    ],
+    correctIndex: 1,
+    quizExplanation: "useRef 底層本質為固定參考的 JavaScript 物件 { current: val }，修改屬性不會觸發 React 重新渲染排程，非常適合保存 DOM 參照、Timer ID 或併發鎖等幕後狀態。"
+  },
+  {
+    id: "react-21",
+    category: "React",
+    difficulty: "Senior",
+    title: "React 18/19 中的元件生命週期與渲染三階段 (Render, Commit, Passive Effects) 運作原理為何？如何正確清理副作用？",
+    tags: ["Lifecycle", "Fiber", "Render Phase", "Commit Phase", "useEffect", "StrictMode", "Clean-up"],
+    summary: "React Fiber 將生命歷程劃分為可中斷純計算的 Render 階段、同步修改 DOM 的 Commit 階段，以及繪製完成後非同步觸發的 Passive Effects 階段；開啟 StrictMode 時開發環境會故意雙重掛載以檢驗 Clean-up 冪等性。",
+    answer: `📌 **核心觀念**
+在現代 React (Hooks) 中，元件沒有傳統 Class 的實例生命週期，而是基於**「每一次 Render 都是獨立快照」**的狀態同步模型。React Fiber 將整段渲染流程嚴謹劃分為三個生命階段：
+
+🔍 **技術細節剖析**
+1. **Render Phase (渲染階段 - 純計算、可被中斷)**：
+   - 執行元件函式主體，計算 Virtual DOM 並與舊 Fiber 樹進行 Diff。
+   - **關鍵規則**：必須是純函式，**嚴禁在此階段執行任何副作用**（如呼叫 API、修改全域變數）。在並發模式下可能被調度器中斷或丟棄重算。
+2. **Commit Phase (提交階段 - DOM 變更、不可中斷)**：
+   - 將計算完畢的 DOM 突變同步寫入真實 DOM 樹。
+   - \`useLayoutEffect\` 在此階段同步執行（在瀏覽器繪製前），適合讀取 DOM 幾何資訊或進行防閃爍微調。
+3. **Passive Effects Phase (被動副作用階段 - 非同步繪製後)**：
+   - 瀏覽器完成螢幕繪製 (Paint) 後，React 在背景非同步調度執行 \`useEffect\`，保證 UI 響應流暢不掉幀。
+4. **StrictMode 雙重掛載與 Clean-up 實戰**：
+   - React 18/19 在開發環境的 StrictMode 下會故意執行 **Mount -> Unmount -> Mount**。
+   - 目的在於驗證副作用是否具備健全的**清理邏輯 (Idempotent Clean-up)**，防止在 Fast Refresh 或切換分頁時遺留內存洩漏與幽靈請求。
+
+💻 **實作範例：AbortController 乾淨清理**
+\`\`\`javascript
+useEffect(() => {
+  const controller = new AbortController();
+
+  const loadData = async () => {
+    try {
+      const res = await fetch(\`/api/items?id=\${id}\`, { signal: controller.signal });
+      const data = await res.json();
+      setItems(data);
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error(err);
+    }
+  };
+
+  loadData();
+
+  // 🌟 Clean-up：在下一次 Effect 執行前或元件銷毀時中斷未完成請求
+  return () => controller.abort();
+}, [id]);
+\`\`\`
+
+💡 **面試加分點**
+- 建議主動強調《You Might Not Need an Effect》理念：如果是根據現有 Props/State 純計算得出的「衍生狀態 (Derived State)」，應在 Render 階段直接運算，切忌繞道 \`useEffect\` 造成額外的 Re-render 性能損耗。`,
+    options: [
+      "Render Phase 會直接同步修改真實 DOM，因此可以在函式頂層自由發送 API 請求",
+      "useEffect 是在真實 DOM 變更但瀏覽器繪製前同步阻塞執行的 Hook",
+      "React Fiber 包含 Render (純計算可中斷)、Commit (DOM 同步更新) 與 Passive Effects (非同步繪製後執行 Effect) 三階段，且 Clean-up 函式用於清理副作用避免記憶體洩漏",
+      "StrictMode 雙重掛載只會在 Production 生產環境中發生，目的是提升程式碼快取效率"
+    ],
+    correctIndex: 2,
+    quizExplanation: "React Fiber 嚴格切分 Render Phase (純計算可中斷)、Commit Phase (真實 DOM 寫入) 與 Passive Effects Phase (瀏覽器繪製後非同步跑 useEffect)；Clean-up 函式在元件銷毀或下一次 Effect 觸發前執行，防止競態條件與記憶體洩漏。"
   }
 ];

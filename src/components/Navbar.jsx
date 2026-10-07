@@ -1,6 +1,21 @@
 import React from 'react';
-import { Sparkles, BookOpen, Layers, Award, BarChart3, CheckCircle2, Bookmark } from 'lucide-react';
+import { Sparkles, BookOpen, Layers, Award, BarChart3, CheckCircle2, Bookmark, Compass } from 'lucide-react';
 
+/**
+ * Navbar - 頂部全域導覽列元件
+ * 
+ * 【React 小白學習筆記】：
+ * 1. Props 解構賦值：`{ activeMode, setActiveMode, ... }` 讓我們可以直接使用傳進來的屬性，不用寫 `props.activeMode`。
+ * 2. 衍生狀態計算：`percent` 不需要放進 useState，直接在渲染週期根據 props 數值計算即可，避免多餘的狀態同步問題。
+ * 3. 狀態回呼觸發：按下按鈕時執行 `setActiveMode('guides')`，會呼叫父層 App 元件的狀態更新函式，進而切換全站畫面！
+ * 
+ * @param {string} activeMode - 當前啟用的頁面模式 ('bank' | 'flashcard' | 'quiz' | 'guides')
+ * @param {Function} setActiveMode - 修改頁面模式的 State Setter 函式
+ * @param {number} masteredCount - 使用者已標記「已掌握」的題目總數
+ * @param {number} bookmarkCount - 使用者已標記「已收藏」的題目總數
+ * @param {number} totalQuestions - 題庫總題數
+ * @param {Function} onOpenStats - 開啟統計彈窗的回呼函式
+ */
 export default function Navbar({
   activeMode,
   setActiveMode,
@@ -9,6 +24,7 @@ export default function Navbar({
   totalQuestions,
   onOpenStats
 }) {
+  // 衍生數值：計算目前題目的掌握度百分比
   const percent = Math.round((masteredCount / totalQuestions) * 100) || 0;
 
   return (
@@ -49,6 +65,19 @@ export default function Navbar({
               <BookOpen className="w-4 h-4" />
               <span className="hidden md:inline">題庫瀏覽</span>
               <span className="md:hidden">題庫</span>
+            </button>
+
+            <button
+              onClick={() => setActiveMode('guides')}
+              className={`flex items-center space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 ${
+                activeMode === 'guides'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span className="hidden md:inline">專題精講</span>
+              <span className="md:hidden">精講</span>
             </button>
 
             <button
